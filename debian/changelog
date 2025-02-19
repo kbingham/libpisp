@@ -1,0 +1,45 @@
+libpisp (1.1.0-1) bookworm; urgency=medium
+
+  * New upstream version 1.1.0
+
+ -- Serge Schneider <serge@raspberrypi.com>  Mon, 27 Jan 2025 21:49:59 +0000
+
+libpisp (1.0.7-1) bookworm; urgency=medium
+
+  * New upstream version 1.0.7
+
+ -- Serge Schneider <serge@raspberrypi.com>  Thu, 29 Aug 2024 17:32:56 +0100
+
+libpisp (1.0.6-1) bookworm; urgency=medium
+
+  * New upstream version 1.0.6
+
+ -- Serge Schneider <serge@raspberrypi.com>  Mon, 17 Jun 2024 11:19:26 +0100
+
+libpisp (1.0.5-1) bookworm; urgency=medium
+
+  * New upstream version 1.0.5
+
+ -- Serge Schneider <serge@raspberrypi.com>  Wed, 17 Apr 2024 15:28:53 +0100
+
+libpisp (1.0.4-1) bookworm; urgency=medium
+
+  * New upstream version 1.0.4
+  * d/watch: fix match pattern
+
+ -- Serge Schneider <serge@raspberrypi.com>  Wed, 14 Feb 2024 13:58:39 +0000
+
+libpisp (1.0.2-1) bookworm; urgency=medium
+
+  * New upstream version 1.0.2
+  * d/watch: Use the Raspberry Pi Github releases
+  * d/gbp.conf: switch to tarball releases
+  * d/c: Rename libpisp1.0.0 package to libpisp1
+
+ -- Serge Schneider <serge@raspberrypi.com>  Wed, 22 Nov 2023 18:01:13 +0000
+
+libpisp (1.0.0-1) bookworm; urgency=medium
+
+  * Initial release.
+
+ -- Serge Schneider <serge@raspberrypi.com>  Tue, 26 Sep 2023 10:49:04 +0000

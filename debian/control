@@ -7,8 +7,6 @@ Build-Depends:
  debhelper-compat (= 13),
  meson,
  pkg-config,
- libboost-log-dev,
- libboost-thread-dev,
  nlohmann-json3-dev
 Standards-Version: 4.6.2
 Homepage: https://github.com/raspberrypi/libpisp

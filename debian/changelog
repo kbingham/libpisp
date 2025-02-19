@@ -1,3 +1,9 @@
+libpisp (1.2) UNRELEASED; urgency=medium
+
+  * Automated Builds
+
+ -- root <root@c9c8e11a20b3>  Wed, 19 Feb 2025 14:46:24 +0000
+
 libpisp (1.1.0-1) bookworm; urgency=medium
 
   * New upstream version 1.1.0

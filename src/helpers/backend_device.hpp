@@ -9,7 +9,8 @@
 #include <string>
 #include <unordered_set>
 
-#include "libpisp/backend/pisp_be_config.h"
+#include "backend/pisp_be_config.h"
+#include "buffer.hpp"
 #include "media_device.hpp"
 #include "v4l2_device.hpp"
 
@@ -22,17 +23,26 @@ public:
 	BackendDevice(const std::string &device);
 	~BackendDevice();
 
-	void Setup(const pisp_be_tiles_config &config);
-	int Run();
+	void Setup(const pisp_be_tiles_config &config, unsigned int buffer_count = 1, bool use_opaque_format = false);
+
+	template <typename T>
+	int Run(const T &buffers);
 
 	bool Valid() const
 	{
 		return valid_;
 	}
 
-	const std::map<std::string, V4l2Device::Buffer> &GetBuffers() const
+	V4l2Device &Node(const std::string &node)
 	{
-		return buffers_;
+		return nodes_.at(node);
+	}
+
+	std::map<std::string, std::vector<BufferRef>> GetBuffers();
+	std::map<std::string, BufferRef> GetBufferSlice() const;
+	BufferRef ConfigBuffer()
+	{
+		return nodes_.at("pispbe-config").Buffers()[0];
 	}
 
 private:
@@ -40,8 +50,6 @@ private:
 	V4l2DevMap nodes_;
 	MediaDevice devices_;
 	std::unordered_set<std::string> nodes_enabled_;
-	V4l2Device::Buffer config_buffer_;
-	std::map<std::string, V4l2Device::Buffer> buffers_;
 };
 
-} // namespace libpisp
+} // namespace libpisp::helpers

@@ -28,6 +28,8 @@
 #include "libpisp/common/utils.hpp"
 #include "libpisp/variants/variant.hpp"
 
+using Buffer = libpisp::helpers::Buffer;
+
 void read_plane(uint8_t *mem, std::ifstream &in, unsigned int width, unsigned int height, unsigned int file_stride,
 				unsigned int buffer_stride)
 {
@@ -53,7 +55,7 @@ void write_plane(std::ofstream &out, uint8_t *mem, unsigned int width, unsigned 
 	}
 }
 
-void read_rgb888(std::array<uint8_t *, 3> &mem, std::ifstream &in, unsigned int width, unsigned int height,
+void read_rgb888(const std::array<uint8_t *, 3> &mem, std::ifstream &in, unsigned int width, unsigned int height,
 				 unsigned int file_stride, unsigned int buffer_stride)
 {
 	read_plane((uint8_t *)mem[0], in, width * 3, height, file_stride, buffer_stride);
@@ -65,7 +67,19 @@ void write_rgb888(std::ofstream &out, std::array<uint8_t *, 3> &mem, unsigned in
 	write_plane(out, (uint8_t *)mem[0], width * 3, height, file_stride, buffer_stride);
 }
 
-void read_yuv(std::array<uint8_t *, 3> &mem, std::ifstream &in, unsigned int width, unsigned int height,
+void read_32(const std::array<uint8_t *, 3> &mem, std::ifstream &in, unsigned int width, unsigned int height,
+			 unsigned int file_stride, unsigned int buffer_stride)
+{
+	read_plane((uint8_t *)mem[0], in, width * 4, height, file_stride, buffer_stride);
+}
+
+void write_32(std::ofstream &out, std::array<uint8_t *, 3> &mem, unsigned int width, unsigned int height,
+			  unsigned int file_stride, unsigned int buffer_stride)
+{
+	write_plane(out, (uint8_t *)mem[0], width * 4, height, file_stride, buffer_stride);
+}
+
+void read_yuv(const std::array<uint8_t *, 3> &mem, std::ifstream &in, unsigned int width, unsigned int height,
 			  unsigned int file_stride, unsigned int buffer_stride, unsigned int ss_x, unsigned int ss_y)
 {
 	uint8_t *dst = mem[0];
@@ -93,25 +107,25 @@ void write_yuv(std::ofstream &out, std::array<uint8_t *, 3> &mem, unsigned int w
 	write_plane(out, src, width / ss_x, height / ss_y, file_stride / ss_x, buffer_stride / ss_x);
 }
 
-void read_yuv420(std::array<uint8_t *, 3> &mem, std::ifstream &in, unsigned int width, unsigned int height,
+void read_yuv420(const std::array<uint8_t *, 3> &mem, std::ifstream &in, unsigned int width, unsigned int height,
 				 unsigned int file_stride, unsigned int buffer_stride)
 {
 	read_yuv(mem, in, width, height, file_stride, buffer_stride, 2, 2);
 }
 
-void read_yuv422p(std::array<uint8_t *, 3> &mem, std::ifstream &in, unsigned int width, unsigned int height,
+void read_yuv422p(const std::array<uint8_t *, 3> &mem, std::ifstream &in, unsigned int width, unsigned int height,
 				  unsigned int file_stride, unsigned int buffer_stride)
 {
 	read_yuv(mem, in, width, height, file_stride, buffer_stride, 2, 1);
 }
 
-void read_yuv444p(std::array<uint8_t *, 3> &mem, std::ifstream &in, unsigned int width, unsigned int height,
+void read_yuv444p(const std::array<uint8_t *, 3> &mem, std::ifstream &in, unsigned int width, unsigned int height,
 				  unsigned int file_stride, unsigned int buffer_stride)
 {
 	read_yuv(mem, in, width, height, file_stride, buffer_stride, 1, 1);
 }
 
-void read_yuv422i(std::array<uint8_t *, 3> &mem, std::ifstream &in, unsigned int width, unsigned int height,
+void read_yuv422i(const std::array<uint8_t *, 3> &mem, std::ifstream &in, unsigned int width, unsigned int height,
 				  unsigned int file_stride, unsigned int buffer_stride)
 {
 	read_plane(mem[0], in, width * 2, height, file_stride, buffer_stride);
@@ -141,9 +155,10 @@ void write_yuv422i(std::ofstream &out, std::array<uint8_t *, 3> &mem, unsigned i
 	write_plane(out, mem[0], width * 2, height, file_stride, buffer_stride);
 }
 
+// clang-format off
 struct FormatFuncs
 {
-	std::function<void(std::array<uint8_t *, 3> &, std::ifstream &, unsigned int, unsigned int, unsigned int,
+	std::function<void(const std::array<uint8_t *, 3> &, std::ifstream &, unsigned int, unsigned int, unsigned int,
 					   unsigned int)> read_file;
 	std::function<void(std::ofstream &, std::array<uint8_t *, 3> &, unsigned int, unsigned int, unsigned int,
 					   unsigned int)> write_file;
@@ -152,12 +167,14 @@ struct FormatFuncs
 const std::map<std::string, FormatFuncs> Formats =
 {
 	{ "RGB888", { read_rgb888, write_rgb888 } },
+	{ "RGBX8888", { read_32, write_32 } },
 	{ "YUV420P", { read_yuv420, write_yuv420 } },
 	{ "YUV422P", { read_yuv422p, write_yuv422p } },
 	{ "YUV444P", { read_yuv444p, write_yuv444p } },
 	{ "YUYV", { read_yuv422i, write_yuv422i } },
 	{ "UYVY", { read_yuv422i, write_yuv422i } },
 };
+// clang-format on
 
 struct Format
 {
@@ -203,6 +220,7 @@ int main(int argc, char *argv[])
 
 	cxxopts::Options options(argv[0], "PiSP Image Converter");
 
+	// clang-format off
 	options.add_options()
 		("input", "Input file", cxxopts::value<std::string>())
 		("output", "Output file", cxxopts::value<std::string>())
@@ -214,6 +232,7 @@ int main(int argc, char *argv[])
 		("l,list", "Enumerate the media device nodes")
 		("h,help", "Print usage")
 	;
+	// clang-format on
 
 	options.parse_positional({ "input", "output" });
 	options.positional_help("<input file> <output file>");
@@ -280,6 +299,11 @@ int main(int argc, char *argv[])
 	global.bayer_enables = 0;
 	global.rgb_enables = PISP_BE_RGB_ENABLE_INPUT + PISP_BE_RGB_ENABLE_OUTPUT0;
 
+	if (in_file.format == "RGBX8888" && !variant->BackendRGB32Supported(0))
+	{
+		std::cerr << "Backend hardware does not support RGBX input" << std::endl;
+		exit(-1);
+	}
 	pisp_image_format_config i = {};
 	i.width = in_file.width;
 	i.height = in_file.height;
@@ -289,9 +313,32 @@ int main(int argc, char *argv[])
 	be.SetInputFormat(i);
 
 	pisp_be_output_format_config o = {};
-	o.image.width = out_file.width;
-	o.image.height = out_file.height;
-	o.image.format = libpisp::get_pisp_image_format(out_file.format);
+	if (out_file.format == "RGBX8888" && !variant->BackendRGB32Supported(0))
+	{
+		// Hack to generate RGBX even when BE_MINOR_VERSION < 1 using Resample
+		if (out_file.width < i.width)
+			std::cerr << "Backend hardware has limited RGBX support; resize artifacts may be present" << std::endl;
+
+		o.image.width = out_file.width * 2 - 1;
+		o.image.height = out_file.height;
+		o.image.format = libpisp::get_pisp_image_format("UYVY");
+
+		pisp_be_ccm_config csc = {}; // Define a matrix to swap components [0] and [1]
+		csc.coeffs[1] = 1024;
+		csc.coeffs[3] = 1024;
+		csc.coeffs[8] = 1024;
+		csc.offsets[0] = 131072; // round to nearest after Resample, for 8-bit output
+		csc.offsets[1] = 131072;
+		csc.offsets[2] = 131072;
+		be.SetCsc(0, csc);
+		global.rgb_enables |= PISP_BE_RGB_ENABLE_CSC0;
+	}
+	else
+	{
+		o.image.width = out_file.width;
+		o.image.height = out_file.height;
+		o.image.format = libpisp::get_pisp_image_format(out_file.format);
+	}
 	assert(o.image.format);
 	libpisp::compute_optimal_stride(o.image, true);
 	be.SetOutputFormat(0, o);
@@ -299,20 +346,20 @@ int main(int argc, char *argv[])
 	if (!out_file.stride)
 		out_file.stride = o.image.stride;
 
-	if (in_file.format != "RGB888")
+	if (in_file.format >= "U")
 	{
 		pisp_be_ccm_config csc;
 		be.InitialiseYcbcrInverse(csc, "jpeg");
 		be.SetCcm(csc);
-		global.rgb_enables += PISP_BE_RGB_ENABLE_CCM;
+		global.rgb_enables |= PISP_BE_RGB_ENABLE_CCM;
 	}
 
-	if (out_file.format != "RGB888")
+	if (out_file.format >= "U")
 	{
 		pisp_be_ccm_config csc;
 		be.InitialiseYcbcr(csc, "jpeg");
 		be.SetCsc(0, csc);
-		global.rgb_enables += PISP_BE_RGB_ENABLE_CSC0;
+		global.rgb_enables |= PISP_BE_RGB_ENABLE_CSC0;
 	}
 
 	be.SetGlobal(global);
@@ -323,7 +370,7 @@ int main(int argc, char *argv[])
 	be.Prepare(&config);
 
 	backend_device.Setup(config);
-	auto buffers = backend_device.GetBuffers();
+	auto buffers = backend_device.GetBufferSlice();
 
 	std::string input_filename = args["input"].as<std::string>();
 	std::ifstream in(input_filename, std::ios::binary);
@@ -333,15 +380,16 @@ int main(int argc, char *argv[])
 		exit(-1);
 	}
 
-	std::cerr << "Reading " << input_filename << " "
-			  << in_file.width << ":" << in_file.height << ":" << in_file.stride << ":" << in_file.format << std::endl;
+	std::cerr << "Reading " << input_filename << " " << in_file.width << ":" << in_file.height << ":" << in_file.stride
+			  << ":" << in_file.format << std::endl;
 
-	Formats.at(in_file.format)
-		.read_file(buffers["pispbe-input"].mem, in, in_file.width, in_file.height, in_file.stride,
-				   i.stride);
-	in.close();
+	{
+		Buffer::Sync input(buffers.at("pispbe-input"), Buffer::Sync::Access::ReadWrite);
+		Formats.at(in_file.format).read_file(input.Get(), in, in_file.width, in_file.height, in_file.stride, i.stride);
+		in.close();
+	}
 
-	int ret = backend_device.Run();
+	int ret = backend_device.Run(buffers);
 	if (ret)
 	{
 		std::cerr << "Job run error!" << std::endl;
@@ -356,13 +404,14 @@ int main(int argc, char *argv[])
 		exit(-1);
 	}
 
+	Buffer::Sync output(buffers.at("pispbe-output0"), Buffer::Sync::Access::Read);
 	Formats.at(out_file.format)
-		.write_file(out, buffers["pispbe-output0"].mem, out_file.width, out_file.height, out_file.stride,
-					o.image.stride);
+		.write_file(out, const_cast<std::array<uint8_t *, 3> &>(output.Get()), out_file.width, out_file.height,
+					out_file.stride, o.image.stride);
 	out.close();
 
-	std::cerr << "Writing " << output_file << " "
-			  << out_file.width << ":" << out_file.height << ":" << out_file.stride << ":" << out_file.format << std::endl;
+	std::cerr << "Writing " << output_file << " " << out_file.width << ":" << out_file.height << ":" << out_file.stride
+			  << ":" << out_file.format << std::endl;
 
 	return 0;
 }

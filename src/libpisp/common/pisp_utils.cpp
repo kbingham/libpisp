@@ -12,8 +12,8 @@
 
 #include "backend/pisp_be_config.h"
 
-#include "pisp_common.h"
 #include "logging.hpp"
+#include "pisp_common.h"
 
 namespace libpisp
 {
@@ -27,10 +27,10 @@ uint32_t compute_x_offset(uint32_t /* pisp_image_format */ format, int x)
 	// HoG features are slightly different from the rest.
 	if (PISP_IMAGE_FORMAT_HOG(format))
 	{
-		 // x here is in units of cells.
-		 // Output 16-bit word samples per bin. This is then packed to:
-		 // 32-bytes for an unsigned histogram cell.
-		 // 48-bytes for a signed histogram cell.
+		// x here is in units of cells.
+		// Output 16-bit word samples per bin. This is then packed to:
+		// 32-bytes for an unsigned histogram cell.
+		// 48-bytes for a signed histogram cell.
 		x_offset = x * ((format & PISP_IMAGE_FORMAT_HOG_UNSIGNED) ? 32 : 48);
 	}
 	else if (format & (PISP_IMAGE_FORMAT_INTEGRAL_IMAGE | PISP_IMAGE_FORMAT_BPP_32))
@@ -64,7 +64,7 @@ void compute_stride_align(pisp_image_format_config &config, int align, bool pres
 {
 	if (PISP_IMAGE_FORMAT_WALLPAPER(config.format))
 	{
-		config.stride2 = config.stride = config.height * PISP_WALLPAPER_WIDTH;
+		config.stride2 = config.stride = ((config.height + 7) & ~7) * PISP_WALLPAPER_WIDTH;
 		if (PISP_IMAGE_FORMAT_SAMPLING_420(config.format))
 			config.stride2 /= 2;
 		return;
@@ -116,6 +116,11 @@ void compute_optimal_stride(pisp_image_format_config &config, bool preserve_subs
 {
 	// Use our preferred alignment of 64 bytes.
 	compute_stride_align(config, PISP_BACK_END_OUTPUT_MAX_ALIGN, preserve_subsample_ratio);
+}
+
+void compute_optimal_stride(pisp_image_format_config &config)
+{
+	compute_optimal_stride(config, false);
 }
 
 void compute_addr_offset(const pisp_image_format_config &config, int x, int y, uint32_t *addr_offset,
@@ -217,11 +222,19 @@ static const std::map<std::string, uint32_t> &formats_table()
 	// Note that alternate names and plane orderings are not defined to keep a 1:1 mapping.
 	static const std::map<std::string, uint32_t> formats = {
 		{ "YUV444P", PISP_IMAGE_FORMAT_THREE_CHANNEL + PISP_IMAGE_FORMAT_BPS_8 + PISP_IMAGE_FORMAT_SAMPLING_444 +
-						PISP_IMAGE_FORMAT_PLANARITY_PLANAR },
+						 PISP_IMAGE_FORMAT_PLANARITY_PLANAR },
 		{ "YUV422P", PISP_IMAGE_FORMAT_THREE_CHANNEL + PISP_IMAGE_FORMAT_BPS_8 + PISP_IMAGE_FORMAT_SAMPLING_422 +
-						PISP_IMAGE_FORMAT_PLANARITY_PLANAR },
+						 PISP_IMAGE_FORMAT_PLANARITY_PLANAR },
 		{ "YUV420P", PISP_IMAGE_FORMAT_THREE_CHANNEL + PISP_IMAGE_FORMAT_BPS_8 + PISP_IMAGE_FORMAT_SAMPLING_420 +
-						PISP_IMAGE_FORMAT_PLANARITY_PLANAR },
+						 PISP_IMAGE_FORMAT_PLANARITY_PLANAR },
+		{ "YUV420SP", PISP_IMAGE_FORMAT_THREE_CHANNEL + PISP_IMAGE_FORMAT_BPS_8 + PISP_IMAGE_FORMAT_SAMPLING_420 +
+						  PISP_IMAGE_FORMAT_PLANARITY_SEMI_PLANAR },
+		{ "YUV420SP_COL128", PISP_IMAGE_FORMAT_THREE_CHANNEL + PISP_IMAGE_FORMAT_BPS_8 +
+								 PISP_IMAGE_FORMAT_SAMPLING_420 + PISP_IMAGE_FORMAT_PLANARITY_SEMI_PLANAR +
+								 PISP_IMAGE_FORMAT_WALLPAPER_ROLL },
+		{ "YUV420SP10_COL128", PISP_IMAGE_FORMAT_THREE_CHANNEL + PISP_IMAGE_FORMAT_BPS_10 +
+								   PISP_IMAGE_FORMAT_SAMPLING_420 + PISP_IMAGE_FORMAT_PLANARITY_SEMI_PLANAR +
+								   PISP_IMAGE_FORMAT_WALLPAPER_ROLL },
 		{ "NV12", PISP_IMAGE_FORMAT_THREE_CHANNEL + PISP_IMAGE_FORMAT_BPS_8 + PISP_IMAGE_FORMAT_SAMPLING_420 +
 					  PISP_IMAGE_FORMAT_PLANARITY_SEMI_PLANAR },
 		{ "NV21", PISP_IMAGE_FORMAT_THREE_CHANNEL + PISP_IMAGE_FORMAT_BPS_8 + PISP_IMAGE_FORMAT_SAMPLING_420 +
@@ -235,9 +248,10 @@ static const std::map<std::string, uint32_t> &formats_table()
 		{ "NV61", PISP_IMAGE_FORMAT_THREE_CHANNEL + PISP_IMAGE_FORMAT_BPS_8 + PISP_IMAGE_FORMAT_SAMPLING_422 +
 					  PISP_IMAGE_FORMAT_PLANARITY_SEMI_PLANAR + PISP_IMAGE_FORMAT_ORDER_SWAPPED },
 		{ "RGB888", PISP_IMAGE_FORMAT_THREE_CHANNEL },
-		{ "RGBX8888", PISP_IMAGE_FORMAT_THREE_CHANNEL + PISP_IMAGE_FORMAT_BPP_32 + PISP_IMAGE_FORMAT_ORDER_SWAPPED },
+		{ "RGBX8888", PISP_IMAGE_FORMAT_THREE_CHANNEL + PISP_IMAGE_FORMAT_BPP_32 },
+		{ "XRGB8888", PISP_IMAGE_FORMAT_THREE_CHANNEL + PISP_IMAGE_FORMAT_BPP_32 + PISP_IMAGE_FORMAT_ORDER_SWAPPED },
 		{ "RGB161616", PISP_IMAGE_FORMAT_THREE_CHANNEL + PISP_IMAGE_FORMAT_BPS_16 },
-		{ "BAYER", PISP_IMAGE_FORMAT_BPS_16 + PISP_IMAGE_FORMAT_UNCOMPRESSED },
+		{ "BAYER16", PISP_IMAGE_FORMAT_BPS_16 + PISP_IMAGE_FORMAT_UNCOMPRESSED },
 		{ "PISP_COMP1", PISP_IMAGE_FORMAT_COMPRESSION_MODE_1 },
 		{ "PISP_COMP2", PISP_IMAGE_FORMAT_COMPRESSION_MODE_2 },
 	};
@@ -256,6 +270,9 @@ unsigned int get_pisp_image_format(const std::string &format)
 
 std::string get_pisp_image_format(uint32_t format)
 {
+	// Remove shift from the format assignment, its value does not change format.
+	format = format & ~PISP_IMAGE_FORMAT_SHIFT_MASK;
+
 	const auto &fmts = formats_table();
 	auto it = std::find_if(fmts.begin(), fmts.end(), [format](const auto &f) { return f.second == format; });
 	if (it == fmts.end())

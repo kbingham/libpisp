@@ -14,7 +14,7 @@
 #include <fstream>
 #include <map>
 #include <memory>
-#include <ostream>
+#include <sstream>
 #include <string>
 #include <sys/ioctl.h>
 #include <vector>
@@ -43,13 +43,15 @@ class MediaEnumerator
 public:
 	using MediaDevList = std::vector<MediaDevMap>;
 
-	MediaEnumerator(MediaEnumerator &other) = delete;
-	void operator=(const MediaEnumerator &other) = delete;
+	MediaEnumerator(const MediaEnumerator &) = delete;
+	MediaEnumerator(MediaEnumerator &&) = delete;
+	MediaEnumerator &operator=(const MediaEnumerator &) = delete;
+	MediaEnumerator &operator=(MediaEnumerator &&) = delete;
 
 	static const MediaEnumerator *Get()
 	{
-		static std::unique_ptr<MediaEnumerator> mdev(new MediaEnumerator);
-		return mdev.get();
+		static MediaEnumerator mdev;
+		return &mdev;
 	}
 
 	const MediaDevList &MediaDeviceList() const
@@ -137,8 +139,7 @@ private:
 	MediaDevList device_list_;
 };
 
-MediaDevice::MediaDevice()
-	: media_enumerator_(MediaEnumerator::Get())
+MediaDevice::MediaDevice() : media_enumerator_(MediaEnumerator::Get())
 {
 }
 
@@ -168,8 +169,8 @@ std::string MediaDevice::Acquire(const std::string &device)
 		if (lockf(fd.Get(), F_TLOCK, 0))
 			continue;
 
-		lock_map_.emplace(std::piecewise_construct,
-						  std::forward_as_tuple(m.media_node), std::forward_as_tuple(std::move(fd)));
+		lock_map_.emplace(std::piecewise_construct, std::forward_as_tuple(m.media_node),
+						  std::forward_as_tuple(std::move(fd)));
 
 		return m.media_node;
 	}
@@ -248,6 +249,6 @@ std::map<std::string, DeviceFd>::iterator MediaDevice::unlock(const std::string 
 	if (it == lock_map_.end())
 		return lock_map_.end();
 
-	lockf(it->second.Get(), F_ULOCK, 0);
+	std::ignore = lockf(it->second.Get(), F_ULOCK, 0);
 	return lock_map_.erase(it);
 }
